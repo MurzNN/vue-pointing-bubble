@@ -128,6 +128,43 @@ a {
   height: auto;
 }
 
+.stage {
+  position: relative;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.laptop {
+  max-width: 100%;
+}
+
+.label-bubble {
+  padding: 10px;
+  border-radius: 10px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.label-bubble.dragging {
+  z-index: 31;
+  cursor: grabbing;
+}
+
+code {
+  padding: 1px 5px;
+  font-size: 0.85em;
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.anchor-switch label {
+  margin-left: 8px;
+  cursor: pointer;
+}
+
 footer {
   margin-top: 40px;
   font-size: 0.875rem;

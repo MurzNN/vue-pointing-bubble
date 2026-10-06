@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { PointingBubble } from '../src/index.js'
 
 // Demo 1: hover hints
@@ -18,6 +18,8 @@ const actions = [
   }
 ]
 const hint = ref(null)
+const hintAnchor = ref('edge')
+const hintsTitle = ref(null)
 let hideTimer = 0
 
 const showHint = (e, action) => {
@@ -43,9 +45,16 @@ const steps = [
     text: 'Ready? Your post goes live right away, and subscribers get an email notification.'
   }
 ]
+const intro = {
+  label: 'Welcome to the editor',
+  text: 'This short tour shows what each toolbar button does. It takes less than a minute.'
+}
 const stepEls = []
+// -1: no tour, 0: the intro (no target), 1..n: the toolbar buttons.
 const step = ref(-1)
-const tourTarget = computed(() => (step.value >= 0 ? stepEls[step.value] : null))
+const tourLength = steps.length + 1
+const tourStep = computed(() => (step.value === 0 ? intro : steps[step.value - 1]))
+const tourTarget = computed(() => (step.value > 0 ? stepEls[step.value - 1] : null))
 
 // Demo 3: absolute coordinates
 const chart = ref(null)
@@ -63,11 +72,60 @@ const onChartClick = (e) => {
   pointAt(e.clientX - rect.left, e.clientY - rect.top, 'You clicked here')
 }
 
+// Demo 4: custom bubble positions
+const stage = ref(null)
+const parts = reactive({ camera: null, screen: null, trackpad: null })
+const LABEL_WIDTH = 170
+const labels = reactive([
+  { part: 'camera', title: 'Webcam', text: '1080p with a privacy shutter.', pos: { x: 8, y: 8 }, anchor: 'center' },
+  { part: 'screen', title: 'Display', text: '14" matte panel, 120 Hz.', pos: { x: 0, y: 70 }, anchor: 'edge' },
+  {
+    part: 'trackpad',
+    title: 'Trackpad',
+    text: 'Glass surface with haptic clicks.',
+    pos: { x: 8, y: 220 },
+    anchor: 'edge'
+  }
+])
+const stageReady = ref(false)
+const draggedLabel = ref(null)
+let dragOffset = null
+
+const onLabelMove = (e) => {
+  draggedLabel.value.pos = { x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y }
+}
+
+const stopLabelDrag = () => {
+  window.removeEventListener('pointermove', onLabelMove)
+  draggedLabel.value = null
+}
+
+// Keeps the Display label at the right edge of the stage until the user drags it.
+const placeRightLabel = () => {
+  const label = labels[1]
+  if (!label.moved) label.pos.x = stage.value.clientWidth - LABEL_WIDTH - 8
+}
+
+const startLabelDrag = (e, label) => {
+  e.preventDefault()
+  label.moved = true
+  draggedLabel.value = label
+  dragOffset = { x: e.clientX - label.pos.x, y: e.clientY - label.pos.y }
+  window.addEventListener('pointermove', onLabelMove)
+  window.addEventListener('pointerup', stopLabelDrag, { once: true })
+}
+
 onMounted(() => {
   const c = chart.value.getBoundingClientRect()
   const p = peak.value.getBoundingClientRect()
   pointAt(p.left + p.width / 2 - c.left, p.top + p.height / 2 - c.top, 'Peak: 1,240 visitors')
+
+  placeRightLabel()
+  window.addEventListener('resize', placeRightLabel)
+  stageReady.value = true
 })
+
+onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
 </script>
 
 <template>
@@ -81,8 +139,18 @@ onMounted(() => {
     </header>
 
     <section class="demo">
-      <h2>1. Hover hints</h2>
-      <p class="hint">Hover or focus a button to see what it does. The bubble resizes to fit each hint.</p>
+      <h2>1. Hover hints<span ref="hintsTitle" style="margin-left: 8px" /></h2>
+      <p class="hint">
+        Hover or focus a button to see what it does. The bubble resizes to fit each hint. The bubble on the right
+        is always visible: it uses <code>placement="manual"</code> with <code>right</code> and
+        <code>top</code> styles.
+      </p>
+      <p class="hint anchor-switch">
+        Point the tail at the button's
+        <label><input v-model="hintAnchor" type="radio" value="edge"> nearest edge</label>
+        <label><input v-model="hintAnchor" type="radio" value="center"> center</label>
+        (<code>target-anchor="{{ hintAnchor }}"</code>)
+      </p>
       <p>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis
         dapibus posuere velit aliquet. Donec ullamcorper nulla non metus auctor fringilla. Maecenas
@@ -108,27 +176,49 @@ onMounted(() => {
       </div>
 
       <PointingBubble
-        :target="hint?.el"
+        :target="hintsTitle"
+        placement="manual"
+        style="
+          right: 28px;
+          top: 18px;
+          padding: 10px;
+          border: 1.5px solid #ca8a04;
+          border-radius: 12px;
+          background: #fef9c3;
+        "
+        :tail-base-width="14"
+        :shadow="false"
+      >
+        <p class="bubble-title">Always visible, placed manually</p>
+      </PointingBubble>
+
+      <PointingBubble
+        v-if="hint"
+        :target="hint.el"
+        :target-anchor="hintAnchor"
         :max-width="260"
         :tail-length="28"
         :tail-base-width="16"
         :padding="12"
       >
-        <p class="bubble-title">{{ hint?.label }}</p>
-        <p class="bubble-text">{{ hint?.text }}</p>
+        <p class="bubble-title">{{ hint.label }}</p>
+        <p class="bubble-text">{{ hint.text }}</p>
       </PointingBubble>
     </section>
 
     <section class="demo">
       <h2>2. Guided tour</h2>
-      <p class="hint">Walk the user through a toolbar, one button at a time.</p>
+      <p class="hint">
+        Walk the user through a toolbar, one button at a time. The first step has no
+        <code>target</code>, so it shows just the box, placed by its <code>left</code> and <code>top</code> styles.
+      </p>
       <div class="row">
         <button
           v-for="(s, i) in steps"
           :key="s.label"
           :ref="(el) => (stepEls[i] = el)"
           class="btn"
-          :class="{ active: step === i }"
+          :class="{ active: step === i + 1 }"
         >
           {{ s.label }}
         </button>
@@ -146,22 +236,29 @@ onMounted(() => {
         porta ac consectetur ac, vestibulum at eros. Sed posuere consectetur est at lobortis.
       </p>
 
+      <!-- left/top only apply to the intro step, which has no target. -->
       <PointingBubble
+        v-if="step >= 0"
         :target="tourTarget"
-        :box-width="260"
+        target-anchor="edge"
+        style="
+          left: calc(50% - 130px);
+          top: 140px;
+          width: 260px;
+          padding: 14px;
+          border: 1.5px solid #6366f1;
+          background: #eef2ff;
+        "
         :tail-length="32"
-        :padding="14"
-        fill-color="#eef2ff"
-        stroke-color="#6366f1"
       >
-        <p class="bubble-title">{{ steps[step]?.label }}</p>
-        <p class="bubble-text">{{ steps[step]?.text }}</p>
+        <p class="bubble-title">{{ tourStep.label }}</p>
+        <p class="bubble-text">{{ tourStep.text }}</p>
         <div class="bubble-actions">
-          <span>Step {{ step + 1 }} of {{ steps.length }}</span>
+          <span>Step {{ step + 1 }} of {{ tourLength }}</span>
           <span class="row" style="gap: 6px">
             <button class="btn small" :disabled="step === 0" @click="step--">Back</button>
-            <button class="btn small primary" @click="step = step < steps.length - 1 ? step + 1 : -1">
-              {{ step < steps.length - 1 ? 'Next' : 'Done' }}
+            <button class="btn small primary" @click="step = step < tourLength - 1 ? step + 1 : -1">
+              {{ step === 0 ? 'Start' : step < tourLength - 1 ? 'Next' : 'Done' }}
             </button>
           </span>
         </div>
@@ -207,16 +304,52 @@ onMounted(() => {
         </svg>
 
         <PointingBubble
+          v-if="point"
           :target="point"
+          style="padding: 12px; border: 1.5px solid #1e293b; background: #1e293b"
           :tail-length="30"
           :tail-base-width="14"
-          :padding="12"
-          fill-color="#1e293b"
-          stroke-color="#1e293b"
           @click.stop
         >
           <p class="bubble-title" style="color: #fff">{{ pointLabel }}</p>
           <p class="bubble-text" style="color: #cbd5e1">x: {{ point?.x }}, y: {{ point?.y }}</p>
+        </PointingBubble>
+      </div>
+    </section>
+
+    <section class="demo">
+      <h2>4. Custom bubble positions</h2>
+      <p class="hint">
+        With <code>placement="manual"</code>, each label is positioned by its own <code>left</code> and
+        <code>top</code> styles, while its tail points at a part of
+        the drawing. Drag a label around: the tail moves to whichever side of the box faces its target.
+        The Display and Trackpad labels use <code>target-anchor="edge"</code>, so their tails stop at the
+        nearest border of the part instead of its center.
+      </p>
+      <div ref="stage" class="stage">
+        <svg class="laptop" viewBox="0 0 280 200" width="280" height="200" aria-label="Laptop">
+          <rect x="40" y="10" width="200" height="130" rx="8" fill="#334155" />
+          <rect :ref="(el) => (parts.screen = el)" x="50" y="24" width="180" height="106" rx="2" fill="#93c5fd" />
+          <circle :ref="(el) => (parts.camera = el)" cx="140" cy="17" r="3" fill="#0f172a" />
+          <path d="M20 146 H260 L276 186 H4 Z" fill="#cbd5e1" />
+          <rect :ref="(el) => (parts.trackpad = el)" x="115" y="160" width="50" height="18" rx="3" fill="#94a3b8" />
+        </svg>
+
+        <PointingBubble
+          v-for="label in stageReady ? labels : []"
+          :key="label.part"
+          class="label-bubble"
+          :class="{ dragging: draggedLabel === label }"
+          :target="parts[label.part]"
+          :target-anchor="label.anchor"
+          placement="manual"
+          :style="{ left: label.pos.x + 'px', top: label.pos.y + 'px', width: LABEL_WIDTH + 'px' }"
+          :tail-base-width="14"
+          :transition-duration="draggedLabel === label ? 0 : 200"
+          @pointerdown="startLabelDrag($event, label)"
+        >
+          <p class="bubble-title">{{ label.title }}</p>
+          <p class="bubble-text">{{ label.text }}</p>
         </PointingBubble>
       </div>
     </section>

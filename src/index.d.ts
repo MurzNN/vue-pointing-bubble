@@ -6,6 +6,7 @@ export type PointingBubblePlacement =
   | 'top-right'
   | 'bottom-left'
   | 'bottom-right'
+  | 'manual'
 
 export interface PointingBubblePoint {
   x: number
@@ -20,19 +21,13 @@ export type PointingBubbleTarget =
 
 export interface PointingBubbleProps {
   target?: PointingBubbleTarget
-  preferredPlacement?: PointingBubblePlacement
-  boxWidth?: number | null
-  boxHeight?: number | null
+  placement?: PointingBubblePlacement
+  targetAnchor?: 'center' | 'edge'
   maxWidth?: number
   tailLength?: number
   tailBaseWidth?: number
-  fillColor?: string
-  strokeColor?: string
-  strokeWidth?: number
-  borderRadius?: number
   padding?: number | string
   shadow?: boolean
-  zIndex?: number | string
   transitionDuration?: number
 }
 
