@@ -17,21 +17,29 @@ const readBubble = (root) =>
     }
     const box = el.querySelector('.vue-pointing-bubble__inner')
     const svg = el.querySelector('.vue-pointing-bubble__svg')
-    const path = svg?.querySelector('path')
+    const paths = svg ? [...svg.querySelectorAll('path')] : []
+    const path = paths[0]
+    const strokePath = paths.find((p) => {
+      const stroke = p.getAttribute('stroke')
+      return stroke && stroke !== 'none'
+    })
     const boxCss = getComputedStyle(box)
     const rootCss = getComputedStyle(el)
-    let tip = null
-    let base = null
-    if (path) {
+    const pointsOf = (d, origin) => {
+      if (!d) return null
       // "M x1 y1 L tipX tipY L x2 y2" in the coordinates of the SVG layer.
-      const n = path.getAttribute('d').match(/-?[\d.]+/g).map(Number)
-      const s = svg.getBoundingClientRect()
-      tip = { x: s.left + n[2], y: s.top + n[3] }
-      base = [
-        { x: s.left + n[0], y: s.top + n[1] },
-        { x: s.left + n[4], y: s.top + n[5] }
-      ]
+      const n = d.match(/-?[\d.]+/g).map(Number)
+      return {
+        tip: { x: origin.left + n[2], y: origin.top + n[3] },
+        base: [
+          { x: origin.left + n[0], y: origin.top + n[1] },
+          { x: origin.left + n[4], y: origin.top + n[5] }
+        ]
+      }
     }
+    const s = svg?.getBoundingClientRect()
+    const fillGeom = pointsOf(path?.getAttribute('d'), s)
+    const strokeGeom = pointsOf(strokePath?.getAttribute('d'), s)
     return {
       placement: el.dataset.placement,
       root: rect(el),
@@ -47,11 +55,12 @@ const readBubble = (root) =>
       boxBorderWidth: parseFloat(boxCss.borderTopWidth),
       boxRadius: boxCss.borderTopLeftRadius,
       hasSvg: !!svg,
-      tip,
-      base,
+      tip: fillGeom?.tip ?? null,
+      base: fillGeom?.base ?? null,
+      strokeBase: strokeGeom?.base ?? null,
       tailFill: path?.getAttribute('fill') ?? null,
-      tailStroke: path?.getAttribute('stroke') ?? null,
-      tailStrokeWidth: path ? parseFloat(path.getAttribute('stroke-width')) : null
+      tailStroke: strokePath?.getAttribute('stroke') ?? null,
+      tailStrokeWidth: strokePath ? parseFloat(strokePath.getAttribute('stroke-width')) : null
     }
   })
 
@@ -78,6 +87,14 @@ const expectTailAttached = (b) => {
   expect(b.tailFill).toBe(b.boxBackground)
   expect(b.tailStroke).toBe(b.boxBorderColor)
   expect(b.tailStrokeWidth).toBe(b.boxBorderWidth)
+  // The outline is centered on the border, half a border width outside the fill, so it
+  // doesn't cross into the bubble.
+  if (b.strokeBase) {
+    for (let i = 0; i < 2; i++) {
+      const shift = Math.hypot(b.strokeBase[i].x - b.base[i].x, b.strokeBase[i].y - b.base[i].y)
+      expect(Math.abs(shift - b.boxBorderWidth / 2), `stroke offset ${shift}`).toBeLessThanOrEqual(0.6)
+    }
+  }
   // The tip lies outside the box.
   const inside = b.tip.x > b.box.left && b.tip.x < b.box.right && b.tip.y > b.box.top && b.tip.y < b.box.bottom
   expect(inside).toBe(false)

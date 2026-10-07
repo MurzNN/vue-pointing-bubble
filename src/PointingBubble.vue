@@ -5,11 +5,11 @@ const CSS = `:where(.vue-pointing-bubble__inner) {
   width: var(--vpb-width, max-content);
   max-width: var(--vpb-max-width, none);
   padding: var(--vpb-padding);
-  background: #f8fafc;
-  border: 1.5px solid #475569;
-  border-radius: 16px;
+  background: white;
+  border: 2px solid gray;
+  border-radius: 8px;
 }`
-const SHADOW = 'drop-shadow(0 8px 10px rgba(0, 0, 0, 0.25))'
+const SHADOW = 'drop-shadow(0 6px 8px rgba(0, 0, 0, 0.25))'
 const DEFAULT_Z_INDEX = 30
 const DEFAULT_MAX_WIDTH = 280
 // In manual mode CSS owns the box, so only the tail glides.
@@ -64,7 +64,7 @@ const props = defineProps({
   // Width of the tail where it attaches to the box.
   tailBaseWidth: { type: Number, default: 24 },
   // Used unless CSS on the component sets a padding.
-  padding: { type: [Number, String], default: 16 },
+  padding: { type: [Number, String], default: 8 },
   shadow: { type: Boolean, default: true },
   // Duration in ms of the move animation when the target changes; 0 disables it.
   transitionDuration: { type: Number, default: 200 }
@@ -270,9 +270,11 @@ onBeforeUnmount(() => {
   if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(frame)
 })
 
-// The tail: a triangle from the box wall facing the tip. Its base sits on the inner edge of the
-// border, so its fill covers the border where it attaches; the base itself isn't stroked.
-const tailPath = computed(() => {
+// The tail: a triangle from the box wall facing the tip.
+// The fill reaches the inner edge of the border, so it covers the border where the tail attaches.
+// An SVG stroke is centered on its path, so the outline is drawn along the middle of the border;
+// if it followed the fill, half of the border width would land inside the bubble.
+const tail = computed(() => {
   const c = current.value
   if (!c) return null
   const { placement, tx, ty, bx, by, w, h } = c
@@ -302,14 +304,31 @@ const tailPath = computed(() => {
     along = by + h * (vertical === 'top' ? 0.65 : 0.35)
   }
 
+  const point = (x, y) => `${x} ${y}`
+  const triangle = (base1, base2) => `M ${point(...base1)} L ${tx} ${ty} L ${point(...base2)}`
+  // Center of the border. A stroke of width bw centered here stays within the border.
+  const mid = bw / 2
+
   if (side === 'left' || side === 'right') {
     const a = clamp(along, by + r + half, by + h - r - half)
-    const x = side === 'left' ? bx + bw : bx + w - bw
-    return `M ${x} ${a - half} L ${tx} ${ty} L ${x} ${a + half}`
+    const y1 = a - half
+    const y2 = a + half
+    const fillX = side === 'left' ? bx + bw : bx + w - bw
+    const strokeX = side === 'left' ? bx + mid : bx + w - mid
+    return {
+      fill: triangle([fillX, y1], [fillX, y2]),
+      stroke: bw ? triangle([strokeX, y1], [strokeX, y2]) : null
+    }
   }
   const a = clamp(along, bx + r + half, bx + w - r - half)
-  const y = side === 'top' ? by + bw : by + h - bw
-  return `M ${a - half} ${y} L ${tx} ${ty} L ${a + half} ${y}`
+  const x1 = a - half
+  const x2 = a + half
+  const fillY = side === 'top' ? by + bw : by + h - bw
+  const strokeY = side === 'top' ? by + mid : by + h - mid
+  return {
+    fill: triangle([x1, fillY], [x2, fillY]),
+    stroke: bw ? triangle([x1, strokeY], [x2, strokeY]) : null
+  }
 })
 
 const placement = computed(() => (props.target ? current.value?.placement : 'none'))
@@ -358,17 +377,20 @@ defineExpose({ update })
       </slot>
     </div>
     <svg
-      v-if="target && tailPath"
+      v-if="target && tail"
       class="vue-pointing-bubble__svg"
       :style="{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', zIndex: box?.zIndex }"
     >
+      <path class="vue-pointing-bubble__path" :d="tail.fill" :fill="box.fill" />
       <path
+        v-if="tail.stroke"
         class="vue-pointing-bubble__path"
-        :d="tailPath"
-        :fill="box.fill"
+        :d="tail.stroke"
+        fill="none"
         :stroke="box.stroke"
         :stroke-width="box.strokeWidth"
         stroke-linejoin="round"
+        stroke-linecap="butt"
       />
     </svg>
   </div>
