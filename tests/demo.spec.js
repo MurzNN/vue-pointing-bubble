@@ -87,12 +87,12 @@ const expectTailAttached = (b) => {
   expect(b.tailFill).toBe(b.boxBackground)
   expect(b.tailStroke).toBe(b.boxBorderColor)
   expect(b.tailStrokeWidth).toBe(b.boxBorderWidth)
-  // The outline is centered on the border, half a border width outside the fill, so it
-  // doesn't cross into the bubble.
+  // The outline is centered on the border. The fill continues one pixel further in,
+  // so the border can't show through the mouth when the page is zoomed.
   if (b.strokeBase) {
     for (let i = 0; i < 2; i++) {
       const shift = Math.hypot(b.strokeBase[i].x - b.base[i].x, b.strokeBase[i].y - b.base[i].y)
-      expect(Math.abs(shift - b.boxBorderWidth / 2), `stroke offset ${shift}`).toBeLessThanOrEqual(0.6)
+      expect(Math.abs(shift - (b.boxBorderWidth / 2 + 1)), `stroke offset ${shift}`).toBeLessThanOrEqual(0.6)
     }
   }
   // The tip lies outside the box.
