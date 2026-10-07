@@ -336,16 +336,24 @@ npm run dev:demo     # start the demo dev server with hot reload (`npm run dev` 
 npm run build        # build the library into dist/
 npm run build:demo   # build the demo into demo-dist/
 npm run preview:demo # serve the built demo
+npm test             # build the demo and run the browser tests against it
 ```
+
+The tests in [`tests/demo.spec.js`](tests/demo.spec.js) use
+[Playwright](https://playwright.dev/) and drive the demo page itself: they hover
+the hint buttons, walk through the tour, click the chart, and drag the labels,
+checking that each tail tip lands exactly on its target and that the box without a
+target stays in the page flow. They run in the installed Google Chrome; if you
+don't have it, install it with `npx playwright install chrome`.
 
 The demo (`demo/Demo.vue`) imports the component straight from `src/`, so editing
 either the demo or the component hot-reloads in the browser. It shows hover hints,
 a guided tour with a coachmark, an annotated popover on a picture, and draggable
 labels with custom box positions.
 
-The demo is deployed to GitHub Pages by
-[`.github/workflows/deploy-demo.yml`](.github/workflows/deploy-demo.yml) on every
-push to `main`. To enable it, open **Settings → Pages** in the repository and
+The workflow [`.github/workflows/deploy-demo.yml`](.github/workflows/deploy-demo.yml)
+runs the tests on every pull request and push to `main`, and on `main`, once they
+pass, deploys the demo to GitHub Pages. To enable it, open **Settings → Pages** in the repository and
 set **Source** to **GitHub Actions**.
 
 ## License
