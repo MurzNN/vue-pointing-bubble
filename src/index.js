@@ -1,4 +1,4 @@
-import PointingBubble from './PointingBubble.vue'
+import PointingBubble from '../registry/ui/pointing-bubble/PointingBubble.vue'
 
 export { PointingBubble, PointingBubble as Callout }
 

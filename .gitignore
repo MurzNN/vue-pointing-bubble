@@ -1,6 +1,7 @@
 node_modules/
 dist/
 demo-dist/
+demo/public/r/
 test-results/
 playwright-report/
 *.log

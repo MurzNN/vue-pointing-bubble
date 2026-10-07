@@ -1,0 +1,31 @@
+{
+  "$schema": "https://shadcn-vue.com/schema/registry.json",
+  "name": "vue-pointing-bubble",
+  "homepage": "https://murznn.github.io/vue-pointing-bubble/",
+  "items": [
+    {
+      "name": "pointing-bubble",
+      "type": "registry:ui",
+      "title": "Pointing Bubble",
+      "description": "A Vue 3 callout whose tail points exactly at a coordinate or a DOM element.",
+      "author": "Alexey Murz Korepov",
+      "dependencies": [
+        "vue@^3.3.0"
+      ],
+      "categories": [
+        "callout"
+      ],
+      "docs": "Import it from `@/components/ui/pointing-bubble`. The bubble fills its nearest positioned ancestor; coordinates are measured from that ancestor. Full guide: https://murznn.github.io/vue-pointing-bubble/",
+      "files": [
+        {
+          "path": "registry/ui/pointing-bubble/PointingBubble.vue",
+          "type": "registry:ui"
+        },
+        {
+          "path": "registry/ui/pointing-bubble/index.ts",
+          "type": "registry:ui"
+        }
+      ]
+    }
+  ]
+}

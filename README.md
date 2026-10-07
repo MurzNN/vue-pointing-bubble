@@ -22,7 +22,7 @@ is no seam, and its tip lands on the target pixel with zero offset.
 - Glides smoothly to a new target, and to a new size when its content changes.
 - Follows window resize, scrolling, and container resize.
 - No CSS file to import and no dependency on Tailwind or any other CSS framework.
-- Ships as an ES module, a UMD bundle for `<script>` tags, and the raw `.vue` SFC. Includes TypeScript declarations.
+- Ships as an ES module, a UMD bundle for `<script>` tags, the raw `.vue` SFC, and a [shadcn-vue](https://www.shadcn-vue.com/docs/registry) registry item. Includes TypeScript declarations.
 
 ## Installation
 
@@ -37,6 +37,46 @@ npm install github:MurzNN/vue-pointing-bubble
 ```
 
 Vue `^3.3` is a peer dependency.
+
+### shadcn-vue
+
+This repository is a shadcn-vue registry. In a project that already has `components.json`, install the component with:
+
+```bash
+pnpm dlx shadcn-vue@latest add MurzNN/vue-pointing-bubble/pointing-bubble
+```
+
+The CLI reads [`registry.json`](registry.json) from the default branch and writes the component into the project's UI directory. With the default alias, that is `src/components/ui/pointing-bubble`:
+
+```vue
+<script setup>
+import { PointingBubble } from '@/components/ui/pointing-bubble'
+</script>
+
+<template>
+  <PointingBubble :target="{ x: 320, y: 180 }">
+    Look here.
+  </PointingBubble>
+</template>
+```
+
+Append `#ref` to install from a branch, tag, or commit, for example `MurzNN/vue-pointing-bubble/pointing-bubble#v0.1.0`.
+
+The same item is also published with the demo, so you can register a short name in `components.json`:
+
+```json
+{
+  "registries": {
+    "@vue-pointing-bubble": "https://murznn.github.io/vue-pointing-bubble/r/{name}.json"
+  }
+}
+```
+
+```bash
+pnpm dlx shadcn-vue@latest add @vue-pointing-bubble/pointing-bubble
+```
+
+List what the repository publishes with `pnpm dlx shadcn-vue@latest search MurzNN/vue-pointing-bubble`.
 
 ## Usage
 
@@ -349,11 +389,12 @@ The overlay elements have stable class names you can target from your own CSS:
 
 ```bash
 npm install
-npm run dev:demo     # start the demo dev server with hot reload (`npm run dev` is an alias)
-npm run build        # build the library into dist/
-npm run build:demo   # build the demo into demo-dist/
-npm run preview:demo # serve the built demo
-npm test             # build the demo and run the browser tests against it
+npm run dev:demo       # start the demo dev server with hot reload (`npm run dev` is an alias)
+npm run build          # build the library into dist/
+npm run registry:build # write the shadcn-vue registry JSON into demo/public/r/
+npm run build:demo     # build the registry JSON and the demo into demo-dist/
+npm run preview:demo   # serve the built demo
+npm test               # build the demo and run the browser tests against it
 ```
 
 The tests in [`tests/demo.spec.js`](tests/demo.spec.js) use
@@ -363,8 +404,7 @@ checking that each tail tip lands exactly on its target and that the box without
 target stays in the page flow. They run in the installed Google Chrome; if you
 don't have it, install it with `npx playwright install chrome`.
 
-The demo (`demo/Demo.vue`) imports the component straight from `src/`, so editing
-either the demo or the component hot-reloads in the browser. It shows hover hints,
+The component source is [`registry/ui/pointing-bubble/PointingBubble.vue`](registry/ui/pointing-bubble/PointingBubble.vue). The library and the shadcn-vue registry install the same file. The demo (`demo/Demo.vue`) imports it through `src/index.js`, so editing the demo or the component hot-reloads in the browser. It shows hover hints,
 a guided tour with a coachmark, an annotated popover on a picture, and draggable
 labels with custom box positions.
 

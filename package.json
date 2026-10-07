@@ -34,18 +34,20 @@
       "import": "./dist/vue-pointing-bubble.js",
       "require": "./dist/vue-pointing-bubble.umd.cjs"
     },
-    "./PointingBubble.vue": "./src/PointingBubble.vue"
+    "./PointingBubble.vue": "./registry/ui/pointing-bubble/PointingBubble.vue"
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "registry"
   ],
   "sideEffects": false,
   "scripts": {
     "dev": "npm run dev:demo",
     "dev:demo": "vite --config vite.demo.config.js",
     "build": "vite build && cp src/index.d.ts dist/index.d.ts",
-    "build:demo": "vite build --config vite.demo.config.js",
+    "build:demo": "npm run registry:build && vite build --config vite.demo.config.js",
+    "registry:build": "shadcn-vue build --output demo/public/r",
     "preview:demo": "vite preview --config vite.demo.config.js",
     "test": "playwright test",
     "prepare": "npm run build"
@@ -56,6 +58,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@vitejs/plugin-vue": "^6.0.9",
+    "shadcn-vue": "^2.8.2",
     "vite": "^8.3.2",
     "vue": "^3.5.43"
   }
