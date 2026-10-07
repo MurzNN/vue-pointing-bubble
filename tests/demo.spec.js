@@ -178,11 +178,13 @@ test.describe('with reduced motion', () => {
     expect(short.box.width).toBeLessThan(260)
   })
 
-  test('a manually placed bubble keeps its CSS position and points at its target', async ({ page }) => {
+  test('a manually placed bubble keeps its CSS position and points at a target given by a selector', async ({
+    page
+  }) => {
     const s = section(page, 0)
     const b = await readBubble(bubble(s, 'Always visible'))
     const sectionRect = await rectOf(s)
-    const target = await rectOf(s.locator('h2 span'))
+    const target = await rectOf(page.locator('#hints-title'))
 
     expect(b.placement).toBe('manual')
     expect(b.boxPosition).toBe('absolute')

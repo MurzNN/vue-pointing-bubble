@@ -134,6 +134,20 @@ With automatic placement, the tip then touches the middle of the element's top o
 bottom edge, whichever faces the box. With `placement="manual"`, it touches the
 point of the element's border nearest to the center of the box.
 
+You can also pass a CSS selector instead of a ref, which is handy when the element
+belongs to another component or isn't rendered by Vue at all:
+
+```vue
+<PointingBubble target="#save-button" target-anchor="edge">
+  Click here to save your changes.
+</PointingBubble>
+```
+
+The selector is looked up in the whole document with `document.querySelector`, and
+the first match is used. It's looked up again on every update, so the bubble finds
+an element that appears later, after a re-render, resize, or scroll, or when you
+call `update()`. While nothing matches, the bubble is hidden.
+
 ### Sizing and styling the box
 
 `class`, `style`, and event listeners that you put on `<PointingBubble>` go to the
@@ -297,7 +311,7 @@ import PointingBubble from 'vue-pointing-bubble/PointingBubble.vue'
 
 | Prop                 | Type                                  | Default     | Description |
 | -------------------- | ------------------------------------- | ----------- | ----------- |
-| `target`             | `{ x, y }` \| `Element` \| component  | `null`      | What the tip points at. Coordinates are relative to the positioned parent. Elements are pointed at their center, or at their border with `targetAnchor="edge"`. When `null`, only the box is drawn, without a tail, as a regular element in the document flow. Use `v-if` to hide the bubble entirely. |
+| `target`             | `{ x, y }` \| `Element` \| component \| `string` | `null` | What the tip points at. Coordinates are relative to the positioned parent. A string is a CSS selector, looked up with `document.querySelector`; while it matches nothing, the bubble is hidden. Elements are pointed at their center, or at their border with `targetAnchor="edge"`. When `null`, only the box is drawn, without a tail, as a regular element in the document flow. Use `v-if` to hide the bubble entirely. |
 | `placement`          | `'auto'` \| `'top-left'` \| `'top-right'` \| `'bottom-left'` \| `'bottom-right'` \| `'manual'` | `'auto'` | Where the box sits relative to the tip. `auto` chooses the quadrant facing the center of the container. It flips to the other side if the bubble would go outside the viewport, such as after scrolling, and fits on the other side. `manual` leaves the position to the `left` and `top` that you set with `class` or `style`. The tail then grows from whichever side of the box faces the tip. |
 | `targetAnchor`       | `'center'` \| `'edge'`                | `'center'`  | For element targets, where the tip lands. `center` is the element's center. `edge` is the element's border facing the box: the middle of the top or bottom edge with automatic placement, or the nearest border point with `manual` placement. Ignored for coordinate targets. |
 | `maxWidth`           | `number`                              | `280`       | Width in px at which content wraps, unless your `class` or `style` sets a width or max-width. |
