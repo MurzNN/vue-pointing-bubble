@@ -4,9 +4,9 @@ A Vue 3 callout for a speech bubble, speech balloon, popover with arrow,
 annotated popover, or coachmark. The tail tip points **exactly** at an absolute
 `(x, y)` coordinate or at the center of a DOM element.
 
-The box and tail are drawn as one continuous SVG path, so there are no seams
-between the bubble and its pointer, and the tip vertex lands on the target pixel
-with zero offset.
+The box is a regular element that you style with CSS. The tail is a small SVG
+triangle in the same colors that covers the box border where it attaches, so there
+is no seam, and its tip lands on the target pixel with zero offset.
 
 **[Live demo](https://murznn.github.io/vue-pointing-bubble/)**
 
@@ -14,7 +14,7 @@ with zero offset.
 
 - Point at absolute coordinates (`{ x, y }`) or at a DOM element / component instance.
 - Automatic quadrant placement that keeps the bubble inside the container and the visible viewport, a fixed quadrant, or a box positioned by your own CSS.
-- Seamless single-path SVG outline with rounded corners and an optional drop shadow.
+- Seamless tail with rounded box corners and an optional drop shadow that covers both.
 - Any content through the default slot. The bubble resizes to fit it.
 - Style the bubble with regular `class` and `style`, including Tailwind CSS or UnoCSS utility classes: size, padding, position, background, border, corner radius, and `z-index`.
 - Glides smoothly to a new target, and to a new size when its content changes.
@@ -137,8 +137,8 @@ point of the element's border nearest to the center of the box.
 ### Sizing and styling the box
 
 `class`, `style`, and event listeners that you put on `<PointingBubble>` go to the
-box with your content, the same way as on a regular `<div>`. The outline is drawn
-around whatever size the box ends up with.
+box with your content, the same way as on a regular `<div>`. The tail is attached
+to whatever size the box ends up with.
 
 ```vue
 <PointingBubble :target="button" class="w-64 p-3 text-sm">
@@ -147,23 +147,23 @@ around whatever size the box ends up with.
 ```
 
 By default, the box fits its content, wraps the text at `max-width` (280px), and has
-`padding` of 16px. A width, max-width, or padding that your classes or `style` set
-replaces the corresponding default, so you never get double padding. One exception:
-the component can't tell a zero padding from no padding at all, so to remove the
-padding, use `:padding="0"` instead of a class like `p-0`.
+`padding` of 16px, a light background, a slate border, and 16px rounded corners.
+These defaults come from a tiny stylesheet that the component adds to the page,
+with zero specificity, so anything your classes or `style` set wins, including
+zero values like `p-0` or `rounded-none`.
 
 If you give the box a fixed height, content that doesn't fit is clipped. Add
 `overflow-auto` (or `overflow: auto`) to make it scrollable instead.
 
-The bubble's look comes from CSS too. The component reads these properties from your
-classes and `style`, and draws them on the outline, so they follow the tail as well:
+The box paints itself, so any CSS works on it: gradients, per-corner radii,
+`hover:` variants, and so on. The tail takes these properties from the box:
 
-| CSS                             | Effect on the bubble                        | Default   |
-| ------------------------------- | ------------------------------------------- | --------- |
-| `background-color`              | Fill color.                                 | `#f8fafc` |
-| `border-width`, `border-color`  | Outline width and color.                    | `1.5px` `#475569` |
-| `border-radius`                 | Corner radius.                              | `16px`    |
-| `z-index`                       | Stacking order of the whole bubble.         | `30`      |
+| CSS of the box                          | Effect on the tail                        |
+| --------------------------------------- | ----------------------------------------- |
+| `background-color`                      | Fill color.                               |
+| `border-top-width`, `border-top-color`  | Outline width and color.                  |
+| `border-top-left-radius`                | Keeps the tail away from rounded corners. |
+| `z-index`                               | Stacking order of the whole bubble (`30` if unset). |
 
 ```vue
 <PointingBubble :target="button" class="p-3 rounded-xl bg-yellow-100 border-2 border-yellow-600">
@@ -179,19 +179,13 @@ classes and `style`, and draws them on the outline, so they follow the tail as w
 </PointingBubble>
 ```
 
-The outline covers the same area as a CSS border on a regular `<div>`, so `border-2`
-looks the same as it would there. A few limitations apply:
+The tail is a solid color, so with a gradient or background image, pick a
+`background-color` that blends with it. The tail is updated on a re-render and on
+resize. If the box colors change without one, for example on hover or when you
+toggle dark mode, call `update()`.
 
-- Only solid colors work. Gradients and background images are ignored, and all
-  corners use the top-left radius.
-- The shadow is controlled by the `shadow` prop, not by `box-shadow`.
-- Variants of the bubble's own state, such as `hover:bg-…`, are not picked up.
-  Variants that depend on the page work, such as `dark:`, media queries, and
-  `group-hover:`. If they change without a re-render of the component, such as when
-  you toggle dark mode, call `update()`.
-- Zero values look the same as unset ones, so the default applies. For square corners,
-  use a tiny radius like `rounded-[1px]`. To hide the outline, use a transparent
-  border like `border border-transparent`.
+The `shadow` prop adds a drop shadow that follows the box and the tail together. A
+`box-shadow` of your own only applies to the box.
 
 ### Placing the box yourself
 
@@ -231,20 +225,27 @@ of its classes or style, such as during a CSS transition, call `update()`.
 
 ### A box without a tail
 
-Leave out `target`, or set it to `null`, to draw just the box, with the same
-look and no tail. The box is positioned like in manual mode, by its `left` and
-`top`. This is handy for a step that doesn't point at anything, such as the
+Leave out `target`, or set it to `null`, to draw just the box, with no tail. The
+box is then a regular element in the normal document flow: it isn't absolutely
+positioned and doesn't need a positioned parent. It sits on its own line inside
+the component's root block and is as wide as its content, up to `max-width` and
+the parent's width. Margins on the box work as usual, for example `mx-auto` to
+center it. Opacity and transforms set on the component's root element, such as
+by Slidev's `v-click`, apply to the box as well. In a flex or grid parent, the
+root is the flex or grid item, so put item classes like `flex-1` on a wrapper
+element. This is handy for a step that doesn't point at anything, such as the
 welcome step of a guided tour:
 
 ```vue
-<PointingBubble :target="step.element" class="left-8 top-8">
+<PointingBubble :target="step.element" class="mt-4">
   {{ step.text }}
 </PointingBubble>
 ```
 
-When `target` changes from `null` to an element, a tail appears and the box moves
-next to the element, and back again when it changes to `null`. To hide the bubble
-completely, use `v-if`.
+When `target` changes from `null` to an element, the box leaves the flow and appears
+next to the element, with a tail, and comes back when it changes to `null`. To hide
+the bubble completely, use `v-if`. Margins only apply to this mode and to
+`placement="manual"`; a bubble placed automatically next to its target ignores them.
 
 ### Global registration
 
@@ -296,15 +297,15 @@ import PointingBubble from 'vue-pointing-bubble/PointingBubble.vue'
 
 | Prop                 | Type                                  | Default     | Description |
 | -------------------- | ------------------------------------- | ----------- | ----------- |
-| `target`             | `{ x, y }` \| `Element` \| component  | `null`      | What the tip points at. Coordinates are relative to the positioned parent. Elements are pointed at their center, or at their border with `targetAnchor="edge"`. When `null`, only the box is drawn, without a tail, positioned by its `left` and `top` CSS like with `placement="manual"`. Use `v-if` to hide the bubble entirely. |
+| `target`             | `{ x, y }` \| `Element` \| component  | `null`      | What the tip points at. Coordinates are relative to the positioned parent. Elements are pointed at their center, or at their border with `targetAnchor="edge"`. When `null`, only the box is drawn, without a tail, as a regular element in the document flow. Use `v-if` to hide the bubble entirely. |
 | `placement`          | `'auto'` \| `'top-left'` \| `'top-right'` \| `'bottom-left'` \| `'bottom-right'` \| `'manual'` | `'auto'` | Where the box sits relative to the tip. `auto` chooses the quadrant facing the center of the container. It flips to the other side if the bubble would go outside the viewport, such as after scrolling, and fits on the other side. `manual` leaves the position to the `left` and `top` that you set with `class` or `style`. The tail then grows from whichever side of the box faces the tip. |
 | `targetAnchor`       | `'center'` \| `'edge'`                | `'center'`  | For element targets, where the tip lands. `center` is the element's center. `edge` is the element's border facing the box: the middle of the top or bottom edge with automatic placement, or the nearest border point with `manual` placement. Ignored for coordinate targets. |
 | `maxWidth`           | `number`                              | `280`       | Width in px at which content wraps, unless your `class` or `style` sets a width or max-width. |
 | `tailLength`         | `number`                              | `45`        | Horizontal and vertical offset in px from the tip to the box corner. |
 | `tailBaseWidth`      | `number`                              | `24`        | Width in px of the tail where it joins the box. |
-| `padding`            | `number` \| `string`                  | `16`        | Padding of the box (a number means px), unless your `class` or `style` sets a padding. Mostly useful as `0`, which CSS can't express here. |
-| `shadow`             | `boolean`                             | `true`      | Whether to render a drop shadow. |
-| `transitionDuration` | `number`                              | `200`       | Duration in ms of the glide animation when the target, size, or placement changes. The bubble outline and its content move together. `0` disables it, and it is skipped when the user prefers reduced motion. Consider `0` while the target follows the mouse, such as during dragging. |
+| `padding`            | `number` \| `string`                  | `16`        | Padding of the box (a number means px), unless your `class` or `style` sets a padding. |
+| `shadow`             | `boolean`                             | `true`      | Whether to render a drop shadow under the box and the tail. |
+| `transitionDuration` | `number`                              | `200`       | Duration in ms of the glide animation when the target, size, or placement changes. The box and the tail move together. `0` disables it, and it is skipped when the user prefers reduced motion. Consider `0` while the target follows the mouse, such as during dragging. |
 
 ## Slots
 
@@ -316,17 +317,16 @@ import PointingBubble from 'vue-pointing-bubble/PointingBubble.vue'
 
 | Name       | Description |
 | ---------- | ----------- |
-| `update()` | Recomputes the tip position, remeasures the box, and rereads its CSS. Call it if the target element or a manually placed box moved, or the bubble's CSS changed, without a window resize, scroll, or re-render, such as after an animation or a theme switch. |
+| `update()` | Recomputes the tip position, remeasures the box, and rereads its colors for the tail. Call it if the target element or a manually placed box moved, or the box colors changed, without a window resize, scroll, or re-render, such as after an animation or a theme switch. |
 
 ## Styling
 
 The overlay elements have stable class names you can target from your own CSS:
 
-- `.vue-pointing-bubble`: the overlay root. It has a `data-placement` attribute with the resolved quadrant.
-- `.vue-pointing-bubble__svg`: the SVG layer.
-- `.vue-pointing-bubble__path`: the bubble outline path.
-- `.vue-pointing-bubble__content`: the wrapper that positions and clips the box in automatic placement.
-- `.vue-pointing-bubble__inner`: the box with the slot content. It receives the `class`, `style`, and listeners from `<PointingBubble>`, and its size is what the outline is drawn around.
+- `.vue-pointing-bubble`: the root element, with a `data-placement` attribute holding the resolved quadrant. With a `target`, it's the full-size overlay; without one, it's a plain block around the box, with `data-placement="none"`.
+- `.vue-pointing-bubble__inner`: the box with the slot content. It receives the `class`, `style`, and listeners from `<PointingBubble>`.
+- `.vue-pointing-bubble__svg`: the SVG layer with the tail. It isn't rendered without a `target`.
+- `.vue-pointing-bubble__path`: the tail path.
 
 ## Development
 

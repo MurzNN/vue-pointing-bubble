@@ -1,18 +1,35 @@
 <script>
-let uid = 0
-
-const ANIMATED_KEYS = ['tx', 'ty', 'bx', 'by', 'w', 'h']
+// Default look of the box. `:where()` has zero specificity, so any class or style set on the component wins.
+const CSS = `:where(.vue-pointing-bubble__inner) {
+  box-sizing: border-box;
+  width: var(--vpb-width, max-content);
+  max-width: var(--vpb-max-width);
+  padding: var(--vpb-padding);
+  background: #f8fafc;
+  border: 1.5px solid #475569;
+  border-radius: 16px;
+}`
+const SHADOW = 'drop-shadow(0 8px 10px rgba(0, 0, 0, 0.25))'
+const DEFAULT_Z_INDEX = 30
 // In manual mode CSS owns the box, so only the tail glides.
+const ANIMATED_KEYS = ['tx', 'ty', 'bx', 'by']
 const MANUAL_ANIMATED_KEYS = ['tx', 'ty']
-// Look of the bubble when CSS on the component doesn't set it.
-const DEFAULTS = { fill: '#f8fafc', stroke: '#475569', strokeWidth: 1.5, radius: '16px', zIndex: 30 }
+
+const injectStyles = () => {
+  if (typeof document === 'undefined' || document.getElementById('vue-pointing-bubble-styles')) return
+  const style = document.createElement('style')
+  style.id = 'vue-pointing-bubble-styles'
+  style.textContent = CSS
+  document.head.prepend(style)
+}
 </script>
 
 <script setup>
 /**
  * Precision Vue 3 callout ("pointing bubble") component.
- * Draws the box and its tail as a single continuous SVG path, so the tip vertex
- * lands exactly on the target coordinate (x, y) or on the center of a target element.
+ * The box is a regular element styled with CSS; an SVG tail is drawn from its wall,
+ * so the tip lands exactly on the target coordinate (x, y) or on a target element.
+ * Without a target, only the box is rendered, in the normal document flow.
  */
 import { ref, computed, watch, onMounted, onUpdated, onBeforeUnmount } from 'vue'
 
@@ -51,32 +68,20 @@ const props = defineProps({
   transitionDuration: { type: Number, default: 200 }
 })
 
-const filterId = `vue-pointing-bubble-shadow-${++uid}`
-const containerRef = ref(null)
-const contentRef = ref(null)
-const probeRef = ref(null)
+injectStyles()
+
+const rootRef = ref(null)
+const boxRef = ref(null)
 const tip = ref(null)
-// Target element rect relative to the container; null for coordinate targets.
+// Target element rect relative to the root; null for coordinate targets.
 const targetRect = ref(null)
-const measured = ref(null)
-// What the component's own class/style set: sizing that the defaults must not override,
-// and the background, border, radius, and z-index that are moved to the SVG outline and the overlay.
-const userStyle = ref({
-  width: false,
-  maxWidth: false,
-  padding: false,
-  fill: null,
-  stroke: null,
-  strokeWidth: 0,
-  radius: null,
-  zIndex: null
-})
-const manual = computed(() => props.placement === 'manual')
-// Without a target only the box is drawn, positioned by its CSS like in manual mode.
-const boxOnly = computed(() => !props.target)
-const cssPositioned = computed(() => manual.value || boxOnly.value)
-// Container rect relative to the viewport, plus the viewport size.
+// Size and look of the box, read from the rendered element.
+const box = ref(null)
+// Root rect relative to the viewport, plus the viewport size.
 const frameRect = ref({ left: 0, top: 0, width: 0, height: 0, viewportWidth: 0, viewportHeight: 0 })
+const manual = computed(() => props.placement === 'manual')
+
+const sameKeys = (a, b) => !!a && !!b && Object.keys(a).every((k) => a[k] === b[k])
 
 const resolveElement = (t) => {
   if (typeof Element === 'undefined' || !t) return null
@@ -86,21 +91,18 @@ const resolveElement = (t) => {
 }
 
 const update = () => {
-  const container = containerRef.value
-  if (!container) return
-  if (!props.target) {
+  const root = rootRef.value
+  if (!props.target || !root) {
     tip.value = null
-    targetRect.value = null
-    measure()
     return
   }
 
-  const containerRect = container.getBoundingClientRect()
+  const rootRect = root.getBoundingClientRect()
   frameRect.value = {
-    left: containerRect.left,
-    top: containerRect.top,
-    width: containerRect.width,
-    height: containerRect.height,
+    left: rootRect.left,
+    top: rootRect.top,
+    width: rootRect.width,
+    height: rootRect.height,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight
   }
@@ -109,10 +111,10 @@ const update = () => {
   if (el) {
     const r = el.getBoundingClientRect()
     const rect = {
-      left: r.left - containerRect.left,
-      top: r.top - containerRect.top,
-      right: r.right - containerRect.left,
-      bottom: r.bottom - containerRect.top
+      left: r.left - rootRect.left,
+      top: r.top - rootRect.top,
+      right: r.right - rootRect.left,
+      bottom: r.bottom - rootRect.top
     }
     if (!sameKeys(rect, targetRect.value)) targetRect.value = rect
     tip.value = { x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 }
@@ -125,54 +127,33 @@ const update = () => {
 
 watch(() => [props.target, props.target?.x, props.target?.y], update, { flush: 'post' })
 
-const sameKeys = (a, b) => !!a && !!b && Object.keys(a).every((k) => a[k] === b[k])
-
 const measure = () => {
-  // The probe carries the same class/style without any inline defaults. A hidden element reports
-  // computed values, so `width: auto` and `max-width: none` mean the user's CSS didn't set them.
-  const probe = probeRef.value
-  if (probe && typeof getComputedStyle !== 'undefined') {
-    const s = getComputedStyle(probe)
-    const borderWidth = parseFloat(s.borderTopWidth) || 0
-    const next = {
-      width: s.width !== 'auto',
-      maxWidth: s.maxWidth !== 'none',
-      padding: [s.paddingTop, s.paddingRight, s.paddingBottom, s.paddingLeft].some((v) => parseFloat(v) !== 0),
-      fill: s.backgroundColor !== 'rgba(0, 0, 0, 0)' && s.backgroundColor !== 'transparent' ? s.backgroundColor : null,
-      stroke: borderWidth ? s.borderTopColor : null,
-      strokeWidth: borderWidth,
-      radius: parseFloat(s.borderTopLeftRadius) ? s.borderTopLeftRadius.split(' ')[0] : null,
-      zIndex: s.zIndex !== 'auto' ? s.zIndex : null
-    }
-    if (!sameKeys(next, userStyle.value)) userStyle.value = next
+  const el = boxRef.value
+  if (!el || !props.target) return
+  const s = getComputedStyle(el)
+  const next = {
+    // The position only matters in manual mode, where CSS places the box.
+    x: manual.value ? el.offsetLeft : 0,
+    y: manual.value ? el.offsetTop : 0,
+    width: el.offsetWidth,
+    height: el.offsetHeight,
+    fill: s.backgroundColor,
+    stroke: s.borderTopColor,
+    strokeWidth: parseFloat(s.borderTopWidth) || 0,
+    radius: s.borderTopLeftRadius,
+    zIndex: s.zIndex
   }
-
-  const el = contentRef.value
-  const next = el ? { x: el.offsetLeft, y: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight } : null
-  if (!sameKeys(next, measured.value)) measured.value = next
+  if (!sameKeys(next, box.value)) box.value = next
 }
 
 // Catches changes of the component's class/style, which are not reactive in the script.
 onUpdated(measure)
 
-let contentObserver = null
-
-watch(contentRef, (el, old) => {
-  if (old) contentObserver?.unobserve(old)
-  if (el) {
-    if (!contentObserver && typeof ResizeObserver !== 'undefined') contentObserver = new ResizeObserver(measure)
-    contentObserver?.observe(el)
-  }
-  measure()
-}, { flush: 'post' })
-
-// Where the bubble should end up for the current tip, content size, and props.
+// Where the bubble should end up for the current tip, box size, and props.
 const geometry = computed(() => {
-  const m = measured.value
-  if (!m?.width || !m?.height) return null
+  const m = box.value
+  if (!tip.value || !m?.width || !m?.height) return null
   const { width: w, height: h } = m
-  if (boxOnly.value) return { placement: 'none', tx: null, ty: null, bx: m.x, by: m.y, w, h }
-  if (!tip.value) return null
   const { x: tx, y: ty } = tip.value
   const tLen = props.tailLength
   const f = frameRect.value
@@ -232,7 +213,7 @@ const geometry = computed(() => {
   }
 })
 
-// What is rendered right now; eases towards `geometry` so the path and the content move together.
+// What is rendered right now; eases towards `geometry` so the tail and the box move together.
 const current = ref(null)
 let frame = 0
 
@@ -243,8 +224,7 @@ watch(geometry, (to) => {
   if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(frame)
   const from = current.value
   const duration = props.transitionDuration
-  const tailless = to?.placement === 'none' || from?.placement === 'none'
-  if (!to || !from || tailless || duration <= 0 || typeof requestAnimationFrame === 'undefined' || prefersReducedMotion()) {
+  if (!to || !from || duration <= 0 || typeof requestAnimationFrame === 'undefined' || prefersReducedMotion()) {
     current.value = to
     return
   }
@@ -269,7 +249,8 @@ onMounted(() => {
   window.addEventListener('scroll', update, true)
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(update)
-    resizeObserver.observe(containerRef.value)
+    resizeObserver.observe(rootRef.value)
+    resizeObserver.observe(boxRef.value)
   }
   update()
 })
@@ -278,176 +259,108 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', update)
   window.removeEventListener('scroll', update, true)
   resizeObserver?.disconnect()
-  contentObserver?.disconnect()
   if (typeof cancelAnimationFrame !== 'undefined') cancelAnimationFrame(frame)
 })
 
-const look = computed(() => {
-  const u = userStyle.value
-  return {
-    fill: u.fill ?? DEFAULTS.fill,
-    stroke: u.stroke ?? DEFAULTS.stroke,
-    strokeWidth: u.stroke ? u.strokeWidth : DEFAULTS.strokeWidth,
-    // A CSS border is painted inside the box, so the outline is inset by half its width to cover the same area.
-    inset: u.stroke ? u.strokeWidth / 2 : 0,
-    radius: u.radius ?? DEFAULTS.radius,
-    zIndex: u.zIndex ?? DEFAULTS.zIndex
-  }
-})
-
-const layout = computed(() => {
-  if (!current.value) return null
-  const { placement, tx, ty } = current.value
-  const { inset, radius } = look.value
-  const box = current.value
-  const bx = box.bx + inset
-  const by = box.by + inset
-  const w = box.w - inset * 2
-  const h = box.h - inset * 2
-  const outerRadius = radius.endsWith('%') ? (parseFloat(radius) / 100) * Math.min(box.w, box.h) : parseFloat(radius)
-  const r = Math.max(0, Math.min(outerRadius - inset, Math.min(w, h) / 2))
+// The tail: a triangle from the box wall facing the tip. Its base sits on the inner edge of the
+// border, so its fill covers the border where it attaches; the base itself isn't stroked.
+const tailPath = computed(() => {
+  const c = current.value
+  if (!c) return null
+  const { placement, tx, ty, bx, by, w, h } = c
+  const bw = box.value.strokeWidth
+  const radius = box.value.radius
+  const r = parseFloat(radius) * (radius.endsWith('%') ? Math.min(w, h) / 100 : 1) || 0
   const half = props.tailBaseWidth / 2
+  const clamp = (v, lo, hi) => (lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, v)))
 
-  // `side` is the box wall the tail grows from, `attach` the center of its base along that wall.
   let side = null
-  let attach = 0
-  if (placement === 'none') {
-    // No target, no tail.
-  } else if (placement === 'manual') {
-    // Use the wall facing the tip, attaching as close to the tip as the rounded corners allow.
-    const clamp = (v, lo, hi) => (lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, v)))
+  let along = 0
+  if (placement === 'manual') {
     const dx = Math.max(bx - tx, tx - (bx + w), 0)
     const dy = Math.max(by - ty, ty - (by + h), 0)
     if (dx > 0 && dx >= dy) {
       side = tx < bx ? 'left' : 'right'
-      attach = clamp(ty, by + r + half, by + h - r - half)
+      along = ty
     } else if (dy > 0) {
       side = ty < by ? 'top' : 'bottom'
-      attach = clamp(tx, bx + r + half, bx + w - r - half)
+      along = tx
+    } else {
+      return null
     }
   } else {
     const [vertical, horizontal] = placement.split('-')
     side = horizontal === 'left' ? 'right' : 'left'
-    const fraction = vertical === 'top' ? 0.65 : 0.35
-    attach = by + Math.max(r + half, Math.min(h - r - half, h * fraction))
+    along = by + h * (vertical === 'top' ? 0.65 : 0.35)
   }
 
-  const tail = (s, segment) => (side === s ? segment : '')
-
-  const path =
-    `M ${bx + r} ${by} ` +
-    tail('top', `H ${attach - half} L ${tx} ${ty} L ${attach + half} ${by} `) +
-    `H ${bx + w - r} ` +
-    `A ${r} ${r} 0 0 1 ${bx + w} ${by + r} ` +
-    tail('right', `V ${attach - half} L ${tx} ${ty} L ${bx + w} ${attach + half} `) +
-    `V ${by + h - r} ` +
-    `A ${r} ${r} 0 0 1 ${bx + w - r} ${by + h} ` +
-    tail('bottom', `H ${attach + half} L ${tx} ${ty} L ${attach - half} ${by + h} `) +
-    `H ${bx + r} ` +
-    `A ${r} ${r} 0 0 1 ${bx} ${by + h - r} ` +
-    tail('left', `V ${attach + half} L ${tx} ${ty} L ${bx} ${attach - half} `) +
-    `V ${by + r} ` +
-    `A ${r} ${r} 0 0 1 ${bx + r} ${by} Z`
-
-  // Shadow filter region in px, with enough margin for the blur and its vertical offset.
-  const margin = 48
-  const px = tx ?? bx
-  const py = ty ?? by
-  const shadowRegion = {
-    x: Math.min(bx, px) - margin,
-    y: Math.min(by, py) - margin,
-    width: Math.max(bx + w, px) - Math.min(bx, px) + margin * 2,
-    height: Math.max(by + h, py) - Math.min(by, py) + margin * 2
+  if (side === 'left' || side === 'right') {
+    const a = clamp(along, by + r + half, by + h - r - half)
+    const x = side === 'left' ? bx + bw : bx + w - bw
+    return `M ${x} ${a - half} L ${tx} ${ty} L ${x} ${a + half}`
   }
-
-  return { boxX: box.bx, boxY: box.by, boxW: box.w, boxH: box.h, path, placement, shadowRegion }
+  const a = clamp(along, bx + r + half, bx + w - r - half)
+  const y = side === 'top' ? by + bw : by + h - bw
+  return `M ${a - half} ${y} L ${tx} ${ty} L ${a + half} ${y}`
 })
 
-const contentStyle = computed(() => {
-  const shown = { pointerEvents: layout.value ? 'auto' : 'none', visibility: layout.value ? 'visible' : 'hidden' }
-  // In manual and box-only modes the box is positioned by its own CSS relative to the overlay.
-  if (cssPositioned.value) return { display: 'contents', ...shown }
-  const l = layout.value
+const placement = computed(() => (props.target ? current.value?.placement : 'none'))
+
+// Without a target the root is a plain block around the box, so opacity or transforms set on it apply to the box too.
+const rootStyle = computed(() => {
+  if (!props.target) return {}
+  const z = box.value?.zIndex
   return {
     position: 'absolute',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    overflow: 'hidden',
-    ...shown,
-    left: (l?.boxX ?? 0) + 'px',
-    top: (l?.boxY ?? 0) + 'px',
-    width: l ? l.boxW + 'px' : 'auto',
-    height: l ? l.boxH + 'px' : 'auto'
+    inset: 0,
+    pointerEvents: 'none',
+    zIndex: z && z !== 'auto' ? z : DEFAULT_Z_INDEX,
+    filter: props.shadow ? SHADOW : undefined
   }
 })
 
 // Keys are only added when set: merged with the user's `style`, even an undefined key would win.
-const innerStyle = computed(() => {
-  const u = userStyle.value
-  // The SVG outline paints the background, border, and shadow, so the box itself stays see-through.
+const boxStyle = computed(() => {
   const style = {
-    boxSizing: 'border-box',
-    flexShrink: 0,
-    background: 'transparent',
-    borderColor: 'transparent',
-    boxShadow: 'none'
+    '--vpb-max-width': props.maxWidth + 'px',
+    '--vpb-padding': typeof props.padding === 'number' ? `${props.padding}px` : props.padding
   }
-  if (cssPositioned.value) style.position = 'absolute'
-  if (!u.width) style.width = 'max-content'
-  if (!u.width && !u.maxWidth) style.maxWidth = props.maxWidth + 'px'
-  if (!u.padding) style.padding = typeof props.padding === 'number' ? `${props.padding}px` : props.padding
+  if (!props.target) {
+    // In the flow the box shrinks to its content but never overflows its parent.
+    style['--vpb-width'] = 'fit-content'
+    if (props.shadow) style.filter = SHADOW
+    return style
+  }
+  const c = current.value
+  Object.assign(style, { position: 'absolute', pointerEvents: 'auto', visibility: c ? 'visible' : 'hidden' })
+  // In manual mode the box is positioned by its own CSS; otherwise next to the tip, ignoring margins.
+  if (!manual.value) Object.assign(style, { left: (c?.bx ?? 0) + 'px', top: (c?.by ?? 0) + 'px', margin: 0 })
   return style
 })
 
-defineExpose({ update, layout })
+defineExpose({ update })
 </script>
 
 <template>
-  <div
-    ref="containerRef"
-    class="vue-pointing-bubble"
-    :data-placement="layout?.placement"
-    :style="{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible', zIndex: look.zIndex }"
-  >
+  <div ref="rootRef" class="vue-pointing-bubble" :data-placement="placement" :style="rootStyle">
+    <div ref="boxRef" class="vue-pointing-bubble__inner" v-bind="$attrs" :style="boxStyle">
+      <slot :placement="placement" :tip="geometry ? { x: geometry.tx, y: geometry.ty } : tip">
+        <p :style="{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#1e293b' }">Callout content</p>
+      </slot>
+    </div>
     <svg
-      v-if="layout"
+      v-if="target && tailPath"
       class="vue-pointing-bubble__svg"
-      :style="{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }"
+      :style="{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible', zIndex: box?.zIndex }"
     >
-      <defs v-if="shadow">
-        <filter :id="filterId" filterUnits="userSpaceOnUse" v-bind="layout.shadowRegion">
-          <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.25" />
-        </filter>
-      </defs>
       <path
         class="vue-pointing-bubble__path"
-        :d="layout.path"
-        :fill="look.fill"
-        :stroke="look.stroke"
-        :stroke-width="look.strokeWidth"
+        :d="tailPath"
+        :fill="box.fill"
+        :stroke="box.stroke"
+        :stroke-width="box.strokeWidth"
         stroke-linejoin="round"
-        stroke-linecap="round"
-        :filter="shadow ? `url(#${filterId})` : undefined"
       />
     </svg>
-
-    <div
-      ref="probeRef"
-      class="vue-pointing-bubble__inner"
-      aria-hidden="true"
-      :class="$attrs.class"
-      :style="[$attrs.style, { display: 'none', position: 'absolute' }]"
-    />
-
-    <!-- Rendered (hidden) before the layout is known, so the content can be measured first. -->
-    <div v-if="tip || boxOnly" class="vue-pointing-bubble__content" :style="contentStyle">
-      <div ref="contentRef" class="vue-pointing-bubble__inner" v-bind="$attrs" :style="innerStyle">
-        <slot :placement="layout?.placement" :tip="geometry?.tx != null ? { x: geometry.tx, y: geometry.ty } : tip">
-          <p :style="{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#1e293b' }">Callout content</p>
-        </slot>
-      </div>
-    </div>
   </div>
 </template>

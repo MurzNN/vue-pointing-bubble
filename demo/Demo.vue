@@ -153,9 +153,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
       </p>
       <p>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis
-        dapibus posuere velit aliquet. Donec ullamcorper nulla non metus auctor fringilla. Maecenas
+        dapibus posuere velit aliquet. Donec ullamcorper nulla non metus auctor fringilla. 
+        <PointingBubble>A regular inline bubble</PointingBubble>
+        Maecenas
         faucibus mollis interdum, sed posuere consectetur est at lobortis.
-      </p>
+      </p>      
       <p>
         Cras mattis consectetur purus sit amet fermentum. Vestibulum id ligula porta felis euismod
         semper. Aenean lacinia bibendum nulla sed consectetur.
@@ -210,7 +212,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
       <h2>2. Guided tour</h2>
       <p class="hint">
         Walk the user through a toolbar, one button at a time. The first step has no
-        <code>target</code>, so it shows just the box, placed by its <code>left</code> and <code>top</code> styles.
+        <code>target</code>, so it shows just the box as a regular element in the page flow.
       </p>
       <div class="row">
         <button
@@ -226,24 +228,14 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
           {{ step < 0 ? 'Start tour' : 'End tour' }}
         </button>
       </div>
-      <p>
-        Nullam quis risus eget urna mollis ornare vel eu leo. Etiam porta sem malesuada magna mollis
-        euismod. Curabitur blandit tempus porttitor. Donec sed odio dui, praesent commodo cursus
-        magna, vel scelerisque nisl consectetur et.
-      </p>
-      <p>
-        Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Morbi leo risus,
-        porta ac consectetur ac, vestibulum at eros. Sed posuere consectetur est at lobortis.
-      </p>
 
-      <!-- left/top only apply to the intro step, which has no target. -->
+      <!-- The intro step has no target, so it renders right here, in the page flow. -->
       <PointingBubble
         v-if="step >= 0"
         :target="tourTarget"
         target-anchor="edge"
         style="
-          left: calc(50% - 130px);
-          top: 140px;
+          margin-top: 16px;
           width: 260px;
           padding: 14px;
           border: 1.5px solid #6366f1;
@@ -263,6 +255,15 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
           </span>
         </div>
       </PointingBubble>
+      <p>
+        Nullam quis risus eget urna mollis ornare vel eu leo. Etiam porta sem malesuada magna mollis
+        euismod. Curabitur blandit tempus porttitor. Donec sed odio dui, praesent commodo cursus
+        magna, vel scelerisque nisl consectetur et.
+      </p>
+      <p>
+        Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Morbi leo risus,
+        porta ac consectetur ac, vestibulum at eros. Sed posuere consectetur est at lobortis.
+      </p>
     </section>
 
     <section class="demo">
