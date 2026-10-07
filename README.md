@@ -163,7 +163,7 @@ to whatever size the box ends up with.
 ```
 
 By default, the box fits its content, wraps the text at `maxWidth` (280px), and has
-`padding` of 16px, a light background, a slate border, and 16px rounded corners.
+`padding` of 8px, a white background, a gray border, and 8px rounded corners.
 These defaults come from a tiny stylesheet that the component adds to the page,
 with zero specificity, so anything your classes or `style` set wins, including
 zero values like `p-0` or `rounded-none`.
@@ -320,7 +320,7 @@ import PointingBubble from 'vue-pointing-bubble/PointingBubble.vue'
 | `maxWidth`           | `number`                              | `280`       | Width in px at which content wraps, unless your `class` or `style` sets a width or max-width. Without a `target`, there's no default: the box is only limited by its parent's width. |
 | `tailLength`         | `number`                              | `45`        | Horizontal and vertical offset in px from the tip to the box corner. |
 | `tailBaseWidth`      | `number`                              | `24`        | Width in px of the tail where it joins the box. |
-| `padding`            | `number` \| `string`                  | `16`        | Padding of the box (a number means px), unless your `class` or `style` sets a padding. |
+| `padding`            | `number` \| `string`                  | `8`         | Padding of the box (a number means px), unless your `class` or `style` sets a padding. |
 | `shadow`             | `boolean`                             | `true`      | Whether to render a drop shadow under the box and the tail. |
 | `transitionDuration` | `number`                              | `200`       | Duration in ms of the glide animation when the target, size, or placement changes. The box and the tail move together. `0` disables it, and it is skipped when the user prefers reduced motion. Consider `0` while the target follows the mouse, such as during dragging. |
 
