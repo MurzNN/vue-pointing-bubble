@@ -37,9 +37,9 @@ import { ref, computed, watch, onMounted, onUpdated, onBeforeUnmount } from 'vue
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps({
-  // DOM element, component instance, or { x, y } relative to the positioned parent.
+  // DOM element, component instance, CSS selector, or { x, y } relative to the positioned parent.
   target: {
-    type: [Object, typeof Element !== 'undefined' ? Element : Object],
+    type: [Object, String, typeof Element !== 'undefined' ? Element : Object],
     default: null
   },
   // 'auto' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'manual'
@@ -85,6 +85,8 @@ const sameKeys = (a, b) => !!a && !!b && Object.keys(a).every((k) => a[k] === b[
 
 const resolveElement = (t) => {
   if (typeof Element === 'undefined' || !t) return null
+  // Looked up on every update, so an element that appears later is found too.
+  if (typeof t === 'string') return document.querySelector(t)
   if (t instanceof Element) return t
   if (t.$el instanceof Element) return t.$el
   return null
@@ -121,6 +123,10 @@ const update = () => {
   } else if (typeof props.target.x === 'number' && typeof props.target.y === 'number') {
     targetRect.value = null
     tip.value = { x: props.target.x, y: props.target.y }
+  } else {
+    // A selector that matches nothing (yet): the bubble stays hidden.
+    targetRect.value = null
+    tip.value = null
   }
   measure()
 }

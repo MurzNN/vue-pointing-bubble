@@ -19,7 +19,6 @@ const actions = [
 ]
 const hint = ref(null)
 const hintAnchor = ref('edge')
-const hintsTitle = ref(null)
 let hideTimer = 0
 
 const showHint = (e, action) => {
@@ -139,11 +138,11 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
     </header>
 
     <section class="demo">
-      <h2>1. Hover hints<span ref="hintsTitle" style="margin-left: 8px" /></h2>
+      <h2>1. Hover hints<span id="hints-title" style="margin-left: 8px" /></h2>
       <p class="hint">
         Hover or focus a button to see what it does. The bubble resizes to fit each hint. The bubble on the right
         is always visible: it uses <code>placement="manual"</code> with <code>right</code> and
-        <code>top</code> styles.
+        <code>top</code> styles, and finds its target by a CSS selector, <code>target="#hints-title"</code>.
       </p>
       <p class="hint anchor-switch">
         Point the tail at the button's
@@ -178,7 +177,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
       </div>
 
       <PointingBubble
-        :target="hintsTitle"
+        target="#hints-title"
         placement="manual"
         style="
           right: 28px;

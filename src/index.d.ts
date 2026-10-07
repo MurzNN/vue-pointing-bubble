@@ -17,6 +17,8 @@ export type PointingBubbleTarget =
   | PointingBubblePoint
   | Element
   | ComponentPublicInstance
+  /** A CSS selector, looked up with `document.querySelector`. */
+  | string
   | null
 
 export interface PointingBubbleProps {
