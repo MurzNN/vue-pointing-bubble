@@ -132,8 +132,8 @@ test.describe('with reduced motion', () => {
     expect(b.rootPosition).toBe('static')
     expect(b.boxPosition).toBe('static')
     // Defaults from the component stylesheet.
-    expect(b.boxBackground).toBe('rgb(248, 250, 252)')
-    expect(b.boxRadius).toBe('16px')
+    expect(b.boxBackground).toBe('rgb(255, 255, 255)')
+    expect(b.boxRadius).toBe('8px')
     expect(b.boxBorderWidth).toBeGreaterThan(0)
     // Shrinks to its content inside the full-width root, without the 280px cap of bubbles with a tail.
     expect(b.box.width).toBeLessThan(b.root.width)
