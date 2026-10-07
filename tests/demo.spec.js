@@ -118,8 +118,9 @@ test.describe('with reduced motion', () => {
     expect(b.boxBackground).toBe('rgb(248, 250, 252)')
     expect(b.boxRadius).toBe('16px')
     expect(b.boxBorderWidth).toBeGreaterThan(0)
-    // Shrinks to its content inside the full-width root.
+    // Shrinks to its content inside the full-width root, without the 280px cap of bubbles with a tail.
     expect(b.box.width).toBeLessThan(b.root.width)
+    expect(b.box.width).toBeGreaterThan(280)
     near(b.box.left, b.root.left, 'box left')
 
     // Opacity and transforms on the root, such as Slidev's v-click, apply to the box too.

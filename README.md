@@ -8,6 +8,8 @@ The box is a regular element that you style with CSS. The tail is a small SVG
 triangle in the same colors that covers the box border where it attaches, so there
 is no seam, and its tip lands on the target pixel with zero offset.
 
+![Screenshot of the pointing bubble simple demo layout.](docs/screenshot.png)
+
 **[Live demo](https://murznn.github.io/vue-pointing-bubble/)**
 
 ## Features
@@ -160,7 +162,7 @@ to whatever size the box ends up with.
 </PointingBubble>
 ```
 
-By default, the box fits its content, wraps the text at `max-width` (280px), and has
+By default, the box fits its content, wraps the text at `maxWidth` (280px), and has
 `padding` of 16px, a light background, a slate border, and 16px rounded corners.
 These defaults come from a tiny stylesheet that the component adds to the page,
 with zero specificity, so anything your classes or `style` set wins, including
@@ -242,8 +244,9 @@ of its classes or style, such as during a CSS transition, call `update()`.
 Leave out `target`, or set it to `null`, to draw just the box, with no tail. The
 box is then a regular element in the normal document flow: it isn't absolutely
 positioned and doesn't need a positioned parent. It sits on its own line inside
-the component's root block and is as wide as its content, up to `max-width` and
-the parent's width. Margins on the box work as usual, for example `mx-auto` to
+the component's root block and is as wide as its content, up to the parent's
+width. The 280px default `maxWidth` doesn't apply here, but an explicit
+`:max-width`, or a width or max-width from your CSS, does. Margins on the box work as usual, for example `mx-auto` to
 center it. Opacity and transforms set on the component's root element, such as
 by Slidev's `v-click`, apply to the box as well. In a flex or grid parent, the
 root is the flex or grid item, so put item classes like `flex-1` on a wrapper
@@ -314,7 +317,7 @@ import PointingBubble from 'vue-pointing-bubble/PointingBubble.vue'
 | `target`             | `{ x, y }` \| `Element` \| component \| `string` | `null` | What the tip points at. Coordinates are relative to the positioned parent. A string is a CSS selector, looked up with `document.querySelector`; while it matches nothing, the bubble is hidden. Elements are pointed at their center, or at their border with `targetAnchor="edge"`. When `null`, only the box is drawn, without a tail, as a regular element in the document flow. Use `v-if` to hide the bubble entirely. |
 | `placement`          | `'auto'` \| `'top-left'` \| `'top-right'` \| `'bottom-left'` \| `'bottom-right'` \| `'manual'` | `'auto'` | Where the box sits relative to the tip. `auto` chooses the quadrant facing the center of the container. It flips to the other side if the bubble would go outside the viewport, such as after scrolling, and fits on the other side. `manual` leaves the position to the `left` and `top` that you set with `class` or `style`. The tail then grows from whichever side of the box faces the tip. |
 | `targetAnchor`       | `'center'` \| `'edge'`                | `'center'`  | For element targets, where the tip lands. `center` is the element's center. `edge` is the element's border facing the box: the middle of the top or bottom edge with automatic placement, or the nearest border point with `manual` placement. Ignored for coordinate targets. |
-| `maxWidth`           | `number`                              | `280`       | Width in px at which content wraps, unless your `class` or `style` sets a width or max-width. |
+| `maxWidth`           | `number`                              | `280`       | Width in px at which content wraps, unless your `class` or `style` sets a width or max-width. Without a `target`, there's no default: the box is only limited by its parent's width. |
 | `tailLength`         | `number`                              | `45`        | Horizontal and vertical offset in px from the tip to the box corner. |
 | `tailBaseWidth`      | `number`                              | `24`        | Width in px of the tail where it joins the box. |
 | `padding`            | `number` \| `string`                  | `16`        | Padding of the box (a number means px), unless your `class` or `style` sets a padding. |

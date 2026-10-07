@@ -3,7 +3,7 @@
 const CSS = `:where(.vue-pointing-bubble__inner) {
   box-sizing: border-box;
   width: var(--vpb-width, max-content);
-  max-width: var(--vpb-max-width);
+  max-width: var(--vpb-max-width, none);
   padding: var(--vpb-padding);
   background: #f8fafc;
   border: 1.5px solid #475569;
@@ -11,6 +11,7 @@ const CSS = `:where(.vue-pointing-bubble__inner) {
 }`
 const SHADOW = 'drop-shadow(0 8px 10px rgba(0, 0, 0, 0.25))'
 const DEFAULT_Z_INDEX = 30
+const DEFAULT_MAX_WIDTH = 280
 // In manual mode CSS owns the box, so only the tail glides.
 const ANIMATED_KEYS = ['tx', 'ty', 'bx', 'by']
 const MANUAL_ANIMATED_KEYS = ['tx', 'ty']
@@ -56,7 +57,8 @@ const props = defineProps({
     validator: (v) => ['center', 'edge'].includes(v)
   },
   // Content wraps at this width (px) unless CSS on the component sets a width or max-width.
-  maxWidth: { type: Number, default: 280 },
+  // Defaults to 280 with a target; without one, the box is only limited by its parent.
+  maxWidth: { type: Number, default: undefined },
   // Distance from the box edge to the tip.
   tailLength: { type: Number, default: 45 },
   // Width of the tail where it attaches to the box.
@@ -328,9 +330,10 @@ const rootStyle = computed(() => {
 // Keys are only added when set: merged with the user's `style`, even an undefined key would win.
 const boxStyle = computed(() => {
   const style = {
-    '--vpb-max-width': props.maxWidth + 'px',
     '--vpb-padding': typeof props.padding === 'number' ? `${props.padding}px` : props.padding
   }
+  const maxWidth = props.maxWidth ?? (props.target ? DEFAULT_MAX_WIDTH : null)
+  if (maxWidth != null) style['--vpb-max-width'] = maxWidth + 'px'
   if (!props.target) {
     // In the flow the box shrinks to its content but never overflows its parent.
     style['--vpb-width'] = 'fit-content'

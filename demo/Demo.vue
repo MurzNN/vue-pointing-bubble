@@ -138,7 +138,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
     </header>
 
     <section class="demo">
-      <h2>1. Hover hints<span id="hints-title" style="margin-left: 8px" /></h2>
+      <h2>Static and hover hints<span id="hints-title" style="margin-left: 8px" /></h2>
       <p class="hint">
         Hover or focus a button to see what it does. The bubble resizes to fit each hint. The bubble on the right
         is always visible: it uses <code>placement="manual"</code> with <code>right</code> and
@@ -153,7 +153,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
       <p>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer posuere erat a ante venenatis
         dapibus posuere velit aliquet. Donec ullamcorper nulla non metus auctor fringilla. 
-        <PointingBubble>A regular inline bubble</PointingBubble>
+        <PointingBubble>A regular inline bubble with default styling</PointingBubble>
         Maecenas
         faucibus mollis interdum, sed posuere consectetur est at lobortis.
       </p>      
@@ -208,7 +208,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
     </section>
 
     <section class="demo">
-      <h2>2. Guided tour</h2>
+      <h2>Guided tour</h2>
       <p class="hint">
         Walk the user through a toolbar, one button at a time. The first step has no
         <code>target</code>, so it shows just the box as a regular element in the page flow.
@@ -266,7 +266,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
     </section>
 
     <section class="demo">
-      <h2>3. Annotating a picture by coordinates</h2>
+      <h2>Annotating a picture by coordinates</h2>
       <p class="hint">Click anywhere on the chart. The tip lands on the exact pixel you clicked.</p>
       <p>
         Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa
@@ -318,7 +318,7 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
     </section>
 
     <section class="demo">
-      <h2>4. Custom bubble positions</h2>
+      <h2>Custom bubble positions</h2>
       <p class="hint">
         With <code>placement="manual"</code>, each label is positioned by its own <code>left</code> and
         <code>top</code> styles, while its tail points at a part of
