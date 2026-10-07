@@ -347,6 +347,74 @@ test.describe('with reduced motion', () => {
   })
 })
 
+test('an absolutely positioned bubble only shifts by the root translate', async ({ page }) => {
+  const stage = page.locator('.placed-stage')
+  const root = bubble(stage, 'Placed by CSS')
+  await stage.scrollIntoViewIfNeeded()
+  const before = await readBubble(root)
+  // Absolute inset is resolved against the padding edge, inside the stage border.
+  const stagePad = await stage.evaluate((el) => {
+    const r = el.getBoundingClientRect()
+    const s = getComputedStyle(el)
+    return {
+      left: r.left + parseFloat(s.borderLeftWidth),
+      top: r.top + parseFloat(s.borderTopWidth),
+      width: el.clientWidth,
+      height: el.clientHeight
+    }
+  })
+
+  expect(before.placement).toBe('none')
+  expect(before.hasSvg).toBe(false)
+  expect(before.rootPosition).toBe('absolute')
+  expect(before.boxPosition).toBe('absolute')
+  near(before.root.left, stagePad.left, 'root left')
+  near(before.root.top, stagePad.top, 'root top')
+  near(before.root.width, stagePad.width, 'root width')
+  near(before.root.height, stagePad.height, 'root height')
+  near(before.box.left, stagePad.left + 48, 'resting left')
+  near(before.box.top, stagePad.top + 36, 'resting top')
+
+  // v-click puts translate on the root and transitions it. The box must stay within that
+  // 20px slide the whole time; checking only the frame after transitionend would miss the jump.
+  const frames = await root.evaluate(async (el) => {
+    const box = el.querySelector('.vue-pointing-bubble__inner')
+    el.style.transition = 'translate 200ms linear'
+    const read = () => {
+      const r = box.getBoundingClientRect()
+      return { left: r.left, top: r.top, translate: getComputedStyle(el).translate }
+    }
+    const frames = []
+    const watch = (ms) => new Promise((resolve) => {
+      const start = performance.now()
+      const step = () => {
+        frames.push(read())
+        if (performance.now() - start < ms) requestAnimationFrame(step)
+        else resolve()
+      }
+      requestAnimationFrame(step)
+    })
+    el.style.translate = '-20px 0'
+    await watch(240)
+    el.style.translate = 'none'
+    await watch(240)
+    return frames
+  })
+
+  const translateX = (value) => (value && value !== 'none' ? parseFloat(value) : 0)
+  for (const frame of frames) {
+    expect(Math.abs(frame.top - before.box.top), `top ${frame.top}`).toBeLessThanOrEqual(PX)
+    expect(frame.left).toBeGreaterThanOrEqual(before.box.left - 20 - PX)
+    expect(frame.left).toBeLessThanOrEqual(before.box.left + PX)
+  }
+  expect(frames.some((frame) => {
+    const x = translateX(frame.translate)
+    return x < -PX && x > -20 + PX
+  }), 'saw a frame mid-transition').toBe(true)
+  near(frames.at(-1).left, before.box.left, 'back to resting left')
+  near(frames.at(-1).top, before.box.top, 'back to resting top')
+})
+
 test('the bubble glides to a new target and settles exactly on it', async ({ page }) => {
   const s = section(page, 0)
   await s.locator('.row .btn', { hasText: 'Download' }).hover()

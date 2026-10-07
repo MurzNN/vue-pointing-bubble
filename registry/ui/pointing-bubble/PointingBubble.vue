@@ -82,6 +82,10 @@ const box = ref(null)
 // Viewport origin, local size, cumulative scale, and the viewport size.
 const frameRect = ref({ left: 0, top: 0, width: 0, height: 0, scaleX: 1, scaleY: 1, viewportWidth: 0, viewportHeight: 0 })
 const manual = computed(() => props.placement === 'manual')
+// The box is position:absolute/fixed via the user's class. The root must then be
+// the containing block for the whole v-click animation: its `translate` would
+// otherwise become the containing block only while the transition runs.
+const boxOutOfFlow = ref(false)
 
 const sameKeys = (a, b) => !!a && !!b && Object.keys(a).every((k) => a[k] === b[k])
 
@@ -160,8 +164,18 @@ const measure = () => {
   if (!sameKeys(next, box.value)) box.value = next
 }
 
+const syncBoxFlow = () => {
+  const el = boxRef.value
+  if (!el) return
+  const position = getComputedStyle(el).position
+  boxOutOfFlow.value = position === 'absolute' || position === 'fixed'
+}
+
 // Catches changes of the component's class/style, which are not reactive in the script.
-onUpdated(measure)
+onUpdated(() => {
+  syncBoxFlow()
+  measure()
+})
 
 // Where the bubble should end up for the current tip, box size, and props.
 const geometry = computed(() => {
@@ -267,6 +281,7 @@ onMounted(() => {
     resizeObserver.observe(rootRef.value)
     resizeObserver.observe(boxRef.value)
   }
+  syncBoxFlow()
   update()
 })
 
@@ -345,8 +360,13 @@ const tail = computed(() => {
 const placement = computed(() => (props.target ? current.value?.placement : 'none'))
 
 // Without a target the root is a plain block around the box, so opacity or transforms set on it apply to the box too.
+// An out-of-flow box is the exception: the root fills the positioned ancestor and stays the
+// containing block, so a temporary translate (Slidev's v-click) only shifts the box.
 const rootStyle = computed(() => {
-  if (!props.target) return {}
+  if (!props.target) {
+    if (!boxOutOfFlow.value) return {}
+    return { position: 'absolute', inset: 0, pointerEvents: 'none' }
+  }
   const z = box.value?.zIndex
   return {
     position: 'absolute',

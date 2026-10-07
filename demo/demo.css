@@ -136,6 +136,20 @@ a {
   justify-content: center;
 }
 
+.placed-stage {
+  position: relative;
+  height: 140px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+}
+
+.placed-bubble {
+  position: absolute;
+  left: 48px;
+  top: 36px;
+}
+
 .laptop {
   max-width: 100%;
 }

@@ -354,6 +354,21 @@ onBeforeUnmount(() => window.removeEventListener('resize', placeRightLabel))
       </div>
     </section>
 
+    <section class="demo">
+      <h2>Placed with CSS</h2>
+      <p class="hint">
+        Leave off <code>target</code> and position the component with CSS:
+        <code>position: absolute</code> plus <code>left</code> and <code>top</code>,
+        inside a parent that has <code>position: relative</code>. The bubble fills
+        that parent, so a <code>translate</code> on it — a click animation, for
+        example — only slides the box. <code>left</code> and <code>top</code> stay
+        measured from the same parent for the whole animation.
+      </p>
+      <div class="placed-stage">
+        <PointingBubble class="placed-bubble">Placed by CSS</PointingBubble>
+      </div>
+    </section>
+
     <footer>
       MIT licensed · <a href="https://github.com/MurzNN/vue-pointing-bubble">Source on GitHub</a>
     </footer>
