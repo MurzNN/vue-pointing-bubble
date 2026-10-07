@@ -79,8 +79,8 @@ const tip = ref(null)
 const targetRect = ref(null)
 // Size and look of the box, read from the rendered element.
 const box = ref(null)
-// Root rect relative to the viewport, plus the viewport size.
-const frameRect = ref({ left: 0, top: 0, width: 0, height: 0, viewportWidth: 0, viewportHeight: 0 })
+// Viewport origin, local size, cumulative scale, and the viewport size.
+const frameRect = ref({ left: 0, top: 0, width: 0, height: 0, scaleX: 1, scaleY: 1, viewportWidth: 0, viewportHeight: 0 })
 const manual = computed(() => props.placement === 'manual')
 
 const sameKeys = (a, b) => !!a && !!b && Object.keys(a).every((k) => a[k] === b[k])
@@ -102,11 +102,17 @@ const update = () => {
   }
 
   const rootRect = root.getBoundingClientRect()
+  // getBoundingClientRect is in viewport pixels, after ancestor transforms such as
+  // Slidev's scale(). left/top and the SVG path are in the root's local CSS pixels.
+  const scaleX = root.offsetWidth ? rootRect.width / root.offsetWidth : 1
+  const scaleY = root.offsetHeight ? rootRect.height / root.offsetHeight : 1
   frameRect.value = {
     left: rootRect.left,
     top: rootRect.top,
-    width: rootRect.width,
-    height: rootRect.height,
+    width: root.offsetWidth,
+    height: root.offsetHeight,
+    scaleX,
+    scaleY,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight
   }
@@ -115,10 +121,10 @@ const update = () => {
   if (el) {
     const r = el.getBoundingClientRect()
     const rect = {
-      left: r.left - rootRect.left,
-      top: r.top - rootRect.top,
-      right: r.right - rootRect.left,
-      bottom: r.bottom - rootRect.top
+      left: (r.left - rootRect.left) / scaleX,
+      top: (r.top - rootRect.top) / scaleY,
+      right: (r.right - rootRect.left) / scaleX,
+      bottom: (r.bottom - rootRect.top) / scaleY
     }
     if (!sameKeys(rect, targetRect.value)) targetRect.value = rect
     tip.value = { x: (rect.left + rect.right) / 2, y: (rect.top + rect.bottom) / 2 }
@@ -191,16 +197,17 @@ const geometry = computed(() => {
     let horizontal = tx > (f.width || 800) / 2 ? 'left' : 'right'
 
     // Flip to the other side if the bubble would leave the viewport and fits there.
+    // Tip, box, and tail are local pixels; multiply by the scale to reach the viewport.
+    const { scaleX: sx, scaleY: sy } = f
     if (f.viewportHeight) {
-      const fitsAbove = f.top + tipYFor('top') - h - tLen >= 0
-      const fitsBelow = f.top + tipYFor('bottom') + h + tLen <= f.viewportHeight
+      const fitsAbove = f.top + (tipYFor('top') - h - tLen) * sy >= 0
+      const fitsBelow = f.top + (tipYFor('bottom') + h + tLen) * sy <= f.viewportHeight
       if (vertical === 'top' && !fitsAbove && fitsBelow) vertical = 'bottom'
       else if (vertical === 'bottom' && !fitsBelow && fitsAbove) vertical = 'top'
     }
     if (f.viewportWidth) {
-      const vx = f.left + tx
-      const fitsLeft = vx - w - tLen >= 0
-      const fitsRight = vx + w + tLen <= f.viewportWidth
+      const fitsLeft = f.left + (tx - w - tLen) * sx >= 0
+      const fitsRight = f.left + (tx + w + tLen) * sx <= f.viewportWidth
       if (horizontal === 'left' && !fitsLeft && fitsRight) horizontal = 'right'
       else if (horizontal === 'right' && !fitsRight && fitsLeft) horizontal = 'left'
     }
@@ -271,7 +278,8 @@ onBeforeUnmount(() => {
 })
 
 // The tail: a triangle from the box wall facing the tip.
-// The fill reaches the inner edge of the border, so it covers the border where the tail attaches.
+// The fill runs a pixel past the inner edge of the border, so it covers the border where the
+// tail attaches even when page zoom snaps that edge to a different pixel.
 // An SVG stroke is centered on its path, so the outline is drawn along the middle of the border;
 // if it followed the fill, half of the border width would land inside the bubble.
 const tail = computed(() => {
@@ -308,12 +316,15 @@ const tail = computed(() => {
   const triangle = (base1, base2) => `M ${point(...base1)} L ${tx} ${ty} L ${point(...base2)}`
   // Center of the border. A stroke of width bw centered here stays within the border.
   const mid = bw / 2
+  // One pixel past the inner edge. The fill matches the background, so this overlap is
+  // invisible, but it covers the border when page zoom snaps that edge off the path.
+  const cover = 1
 
   if (side === 'left' || side === 'right') {
     const a = clamp(along, by + r + half, by + h - r - half)
     const y1 = a - half
     const y2 = a + half
-    const fillX = side === 'left' ? bx + bw : bx + w - bw
+    const fillX = side === 'left' ? bx + bw + cover : bx + w - bw - cover
     const strokeX = side === 'left' ? bx + mid : bx + w - mid
     return {
       fill: triangle([fillX, y1], [fillX, y2]),
@@ -323,7 +334,7 @@ const tail = computed(() => {
   const a = clamp(along, bx + r + half, bx + w - r - half)
   const x1 = a - half
   const x2 = a + half
-  const fillY = side === 'top' ? by + bw : by + h - bw
+  const fillY = side === 'top' ? by + bw + cover : by + h - bw - cover
   const strokeY = side === 'top' ? by + mid : by + h - mid
   return {
     fill: triangle([x1, fillY], [x2, fillY]),
